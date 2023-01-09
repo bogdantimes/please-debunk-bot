@@ -57,7 +57,7 @@ Please debunk it in short (no more than 250 characters!!) tweet form.`;
 
       if (debunkText) {
         const tweet = `${debunkText.trim()}`;
-        reply(tweet, refTweet.id);
+        reply(tweet, mention.id);
       }
     }
 
