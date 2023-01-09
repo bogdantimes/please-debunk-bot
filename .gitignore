@@ -1,0 +1,13 @@
+# User configs
+.clasp.json
+
+# Build artefacts
+apps-script
+node_modules
+.parcel-cache
+parcel-bundle-reports
+!apps-script/appsscript.json
+
+# IDE setting
+.idea
+.vscode
