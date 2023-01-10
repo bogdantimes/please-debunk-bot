@@ -25,12 +25,17 @@ ${PROMPT}`;
     headers: {
       "Authorization": `Bearer ${GPT_KEY}`
     },
+    muteHttpExceptions: true,
     payload: JSON.stringify({
       model: "text-davinci-003",
       max_tokens: maxTweetSize / tokenSize,
       prompt: neuralNetPrompt
     })
   });
+
+  if (response.getResponseCode() !== 200) {
+    throw new Error(`ChatGPT failed: ${response.getContentText()}`);
+  }
 
   const gptReply = JSON.parse(response.getContentText());
   const result = gptReply?.choices?.[0]?.text?.trim() || "";
@@ -172,6 +177,7 @@ function reply(tweet: string, replyTo: string) {
   const response = UrlFetchApp.fetch(url, {
     method: "post",
     contentType: "application/json",
+    muteHttpExceptions: true,
     headers: {
       "User-Agent": "v2TweetJS",
       authorization: `Bearer ${getService().getAccessToken()}`
@@ -181,9 +187,11 @@ function reply(tweet: string, replyTo: string) {
       reply: { in_reply_to_tweet_id: replyTo }
     })
   });
-  const result = JSON.parse(response.getContentText());
-  console.log(result);
-  return result.data.id;
+  if (response.getResponseCode() !== 200) {
+    throw new Error(`Error posting tweet: ${response.getContentText()}`);
+  }
+  const data = JSON.parse(response.getContentText());
+  console.log(data);
 }
 
 /**
@@ -206,11 +214,16 @@ global.debunkRecentTweets = function() {
   });
   const result = JSON.parse(response.getContentText());
   result?.data?.reverse().forEach((tweet: any) => {
+    Utilities.sleep(5000); // sleep 5 seconds to avoid rate limits
     console.log(tweet);
     const tweetText = tweet.text;
-    const debunkText = debunkWithGPT(tweetText);
-    if (debunkText) {
-      reply(debunkText, tweet.id);
+    try {
+      const debunkText = debunkWithGPT(tweetText);
+      if (debunkText) {
+        reply(debunkText, tweet.id);
+      }
+    } catch (e) {
+      console.error(e);
     }
     startTime = tweet.created_at;
     CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
