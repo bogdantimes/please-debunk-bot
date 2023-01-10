@@ -36,13 +36,12 @@ global.tick = function() {
   console.log(mentions);
 
   mentions?.data?.forEach((mention: any) => {
-    const alreadyDebunked = !!mention.referenced_tweets?.find((ref: any) => ref.author_id === BOT_ID);
-    if (alreadyDebunked) {
-      // do not debunk own tweets
-      return;
-    }
     const refTweet = mention.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
-    const refTweetText = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
+    const refTweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
+    // do not debunk own tweets
+    if (refTweet?.author_id === BOT_ID) return;
+    // do not debunk if already debunked
+    if (refTweetText?.toLowerCase().includes("@pleasedebunk")) return;
 
     if (refTweetText) {
       console.log(refTweetText);
