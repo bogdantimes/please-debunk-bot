@@ -39,7 +39,12 @@ ${PROMPT}`;
 
   const gptReply = JSON.parse(response.getContentText());
   const result = gptReply?.choices?.[0]?.text?.trim() || "";
-  return (result.length < 5 || result.endsWith("0")) ? "" : result;
+  return (
+    result.length < 5 ||
+    result.endsWith(`0`) ||
+    result.endsWith(`"0".`) ||
+    result.endsWith(`0.`)
+  ) ? "" : result;
 }
 
 global.tick = function() {
