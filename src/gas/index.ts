@@ -44,7 +44,9 @@ ${PROMPT}`;
     result.endsWith(`0`) ||
     result.endsWith(`"0".`) ||
     result.endsWith(`0.`)
-  ) ? "" : result;
+  ) ? "" : result
+    .replace(/^"/, "")
+    .replace(/"$/, "");
 }
 
 global.tick = function() {
