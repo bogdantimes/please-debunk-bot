@@ -20,7 +20,7 @@ global.tick = function() {
     throw new Error(`Authorization failed. Open the following URL and re-run the script: ${authorizationUrl}`);
   }
 
-  let url = `https://api.twitter.com/2/users/${BOT_ID}/mentions?max_results=4&expansions=referenced_tweets.id`;
+  let url = `https://api.twitter.com/2/users/${BOT_ID}/mentions?max_results=5&expansions=referenced_tweets.id`;
   if (lastMentionId) {
     url += `&since_id=${lastMentionId}`;
   }
