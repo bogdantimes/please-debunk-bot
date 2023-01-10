@@ -30,7 +30,8 @@ global.tick = function() {
     const refTweet = mention.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
     const refTweetText = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
 
-    if (refTweetText) {
+    // do not debunk own tweets
+    if (refTweet.author_id !== BOT_ID && refTweetText) {
       console.log(refTweetText);
 
       const neuralNetPrompt = `${refTweetText}
