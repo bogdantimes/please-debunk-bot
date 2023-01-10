@@ -54,7 +54,7 @@ global.tick = function() {
     throw new Error(`Authorization failed. Open the following URL and re-run the script: ${authorizationUrl}`);
   }
 
-  let url = `https://api.twitter.com/2/users/${BOT_ID}/mentions?max_results=5&expansions=referenced_tweets.id`;
+  let url = `https://api.twitter.com/2/users/${BOT_ID}/mentions?max_results=5&expansions=referenced_tweets.id&tweet.fields=author_id`;
   if (lastMentionId) {
     url += `&since_id=${lastMentionId}`;
   }
@@ -67,10 +67,11 @@ global.tick = function() {
     });
 
   const mentions = JSON.parse(response.getContentText());
-  console.log(mentions);
+  console.log("mentions", mentions);
+  console.log("included tweets", mentions.includes?.tweets);
 
   mentions?.data?.forEach((m: any) => {
-    console.log(m.referenced_tweets);
+    console.log("ref tweets", m.referenced_tweets);
     const refTweet = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
     const refTweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
     // do not debunk own tweets
