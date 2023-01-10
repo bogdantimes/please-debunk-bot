@@ -13,8 +13,6 @@ const {
 function debunkWithGPT(tweet: string) {
   // remove @mentions from the text
   const cleanText = tweet.replace(/@\w+/g, "");
-  console.log(cleanText);
-
   const neuralNetPrompt = `${PROMPT_INTRO}
 """
 ${cleanText}
@@ -22,6 +20,7 @@ ${cleanText}
    
 ${PROMPT}`;
 
+  console.log("prompt", neuralNetPrompt);
   let maxTweetSize = 280;
   let tokenSize = 4;
   const response = UrlFetchApp.fetch(`https://api.openai.com/v1/completions`, {
@@ -44,6 +43,7 @@ ${PROMPT}`;
 
   const gptReply = JSON.parse(response.getContentText());
   const result = gptReply?.choices?.[0]?.text?.trim() || "";
+  console.log("GPT", result)
   return (
     result.length < 5 ||
     result.endsWith(`0`) ||
@@ -186,7 +186,6 @@ global.authCallback = function(request) {
  * @return the ID of the current Tweet
  */
 function reply(tweet: string, replyTo: string) {
-  console.log(tweet);
   const url = `https://api.twitter.com/2/tweets`;
   const response = UrlFetchApp.fetch(url, {
     method: "post",
@@ -215,7 +214,6 @@ function reply(tweet: string, replyTo: string) {
  * @return the ID of the current Tweet
  */
 function retweetWithComment(comment: string, tweetId: string) {
-  console.log(comment);
   const url = `https://api.twitter.com/2/tweets`;
   const response = UrlFetchApp.fetch(url, {
     method: "post",
@@ -233,8 +231,7 @@ function retweetWithComment(comment: string, tweetId: string) {
   if (response.getResponseCode() >= 300) {
     throw new Error(`Error posting tweet ${response.getResponseCode()}: ${response.getContentText()}`);
   }
-  const data = JSON.parse(response.getContentText());
-  console.log(data);
+  console.log(response.getContentText());
 }
 
 /**
