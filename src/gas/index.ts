@@ -77,8 +77,8 @@ global.tick = function() {
     if (refTweet?.author_id === BOT_ID) return;
 
     // do not debunk if already debunked
-    const debunked = mentions.includes?.tweets?.any((t: any) => t.text.includes("@pleasedebunk"));
-    if (!debunked) {
+    const notYetDebunked = !mentions.includes?.tweets?.find((t: any) => t.text.includes("@pleasedebunk"));
+    if (notYetDebunked) {
       const refTweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
       console.log(refTweetText);
       const debunkText = debunkWithGPT(refTweetText);
