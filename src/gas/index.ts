@@ -194,7 +194,7 @@ function reply(tweet: string, replyTo: string) {
 global.debunkRecentTweets = function() {
   let startTime: string = CacheService.getScriptCache().get("startTime") || "";
 
-  const start_time = startTime ? `startTime=${startTime}&` : "";
+  const start_time = startTime ? `start_time=${startTime}&` : "";
   const url = `https://api.twitter.com/2/tweets/search/recent?${start_time}tweet.fields=created_at&${SEARCH_QUERY}&max_results=10`;
   const response = UrlFetchApp.fetch(url, {
     method: "get",
