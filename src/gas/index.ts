@@ -5,8 +5,37 @@ const {
   CLIENT_SECRET,
   GPT_KEY,
   code_verifier,
-  PROMPT
+  PROMPT,
+  SEARCH_QUERY
 } = PropertiesService.getScriptProperties().getProperties();
+
+function debunkWithGPT(tweet: string) {
+  const neuralNetPrompt = `Here's a tweet:
+"""
+${tweet}
+"""
+   
+${PROMPT}`;
+
+  let maxTweetSize = 280;
+  let tokenSize = 4;
+  const response = UrlFetchApp.fetch(`https://api.openai.com/v1/completions`, {
+    method: "post",
+    contentType: "application/json",
+    headers: {
+      "Authorization": `Bearer ${GPT_KEY}`
+    },
+    payload: JSON.stringify({
+      model: "text-davinci-003",
+      max_tokens: maxTweetSize / tokenSize,
+      prompt: neuralNetPrompt
+    })
+  });
+
+  const gptReply = JSON.parse(response.getContentText());
+  const result = gptReply?.choices?.[0]?.text?.trim() || "";
+  return result.length < 5 ? "" : result;
+}
 
 global.tick = function() {
   let lastMentionId = CacheService.getScriptCache().get("lastMentionId") as string;
@@ -37,47 +66,16 @@ global.tick = function() {
 
   mentions?.data?.forEach((m: any) => {
     console.log(m.referenced_tweets);
-    // do not debunk if already debunked
-    const alreadyDebunked = m.referenced_tweets?.find((ref: any) => ref.text?.toLowerCase().includes("@pleasedebunk"));
-    if (alreadyDebunked) return;
-
     const refTweet = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
     const refTweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
     // do not debunk own tweets
     if (refTweet?.author_id === BOT_ID) return;
 
-    if (refTweetText) {
+    // do not debunk if already debunked
+    if (refTweetText && !refTweetText.includes("@pleasedebunk")) {
       console.log(refTweetText);
-
-      const neuralNetPrompt = `Here's a tweet:
-"""
-${refTweetText}
-"""
-   
-${PROMPT}`;
-
-      let maxTweetSize = 280;
-      let tokenSize = 4;
-      const response = UrlFetchApp.fetch(`https://api.openai.com/v1/completions`, {
-        method: "post",
-        contentType: "application/json",
-        headers: {
-          "Authorization": `Bearer ${GPT_KEY}`
-        },
-        payload: JSON.stringify({
-          model: "text-davinci-003",
-          max_tokens: maxTweetSize / tokenSize,
-          prompt: neuralNetPrompt
-        })
-      });
-
-      const gptReply = JSON.parse(response.getContentText());
-      const debunkText = gptReply?.choices?.[0]?.text;
-
-      if (debunkText) {
-        const tweet = `${debunkText.trim()}`;
-        reply(tweet, m.id);
-      }
+      const debunkText = debunkWithGPT(refTweetText);
+      reply(debunkText || `I cannot debunk or confirm this. #DYOR 😓`, m.id);
     }
 
     lastMentionId = m.id;
@@ -187,3 +185,35 @@ function reply(tweet: string, replyTo: string) {
   console.log(result);
   return result.data.id;
 }
+
+/**
+ * Fetches recent tweets that do not contain any media (only text),
+ * and contain the phrase "is it true?".
+ * Then debunks them.
+ */
+global.debunkRecentTweets = function() {
+  let startTime: string = CacheService.getScriptCache().get("startTime") || "";
+
+  const start_time = startTime ? `startTime=${startTime}&` : "";
+  const url = `https://api.twitter.com/2/tweets/search/recent?${start_time}tweet.fields=created_at&${SEARCH_QUERY}&max_results=10`;
+  const response = UrlFetchApp.fetch(url, {
+    method: "get",
+    contentType: "application/json",
+    headers: {
+      "User-Agent": "v2RecentSearchJS",
+      authorization: `Bearer ${getService().getAccessToken()}`
+    }
+  });
+  const result = JSON.parse(response.getContentText());
+  result?.data?.reverse().forEach((tweet: any) => {
+    console.log(tweet);
+    const tweetText = tweet.text;
+    const debunkText = debunkWithGPT(tweetText);
+    if (debunkText) {
+      reply(debunkText, tweet.id);
+    }
+    startTime = tweet.created_at;
+    CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
+  });
+};
+
