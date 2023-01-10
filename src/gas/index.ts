@@ -35,13 +35,15 @@ global.tick = function() {
   const mentions = JSON.parse(response.getContentText());
   console.log(mentions);
 
-  mentions?.data?.forEach((mention: any) => {
-    const refTweet = mention.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
+  mentions?.data?.forEach((m: any) => {
+    // do not debunk if already debunked
+    const alreadyDebunked = m.referenced_tweets?.find((ref: any) => ref.text?.toLowerCase().includes("@pleasedebunk"));
+    if (alreadyDebunked) return;
+
+    const refTweet = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
     const refTweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
     // do not debunk own tweets
     if (refTweet?.author_id === BOT_ID) return;
-    // do not debunk if already debunked
-    if (refTweetText?.toLowerCase().includes("@pleasedebunk")) return;
 
     if (refTweetText) {
       console.log(refTweetText);
@@ -73,11 +75,11 @@ ${PROMPT}`;
 
       if (debunkText) {
         const tweet = `${debunkText.trim()}`;
-        reply(tweet, mention.id);
+        reply(tweet, m.id);
       }
     }
 
-    lastMentionId = mention.id;
+    lastMentionId = m.id;
   });
 
   if (lastMentionId) {
