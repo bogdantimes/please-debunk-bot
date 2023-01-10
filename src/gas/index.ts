@@ -3,7 +3,6 @@ const {
   BOT_ID,
   CLIENT_ID,
   CLIENT_SECRET,
-  BEARER_TOKEN,
   GPT_KEY,
   code_verifier,
   PROMPT
@@ -29,7 +28,7 @@ global.tick = function() {
     {
       headers: {
         "User-Agent": "v2UserMentionssJS",
-        authorization: `Bearer ${BEARER_TOKEN}`
+        authorization: `Bearer ${service.getAccessToken()}`
       }
     });
 
@@ -104,6 +103,7 @@ function getService() {
     .setCallbackFunction("authCallback")
     // Set the property store where authorized tokens should be persisted.
     .setPropertyStore(store)
+    .setCache(CacheService.getScriptCache())
     // Set the scopes to request (space-separated for Twitter services).
     .setScope("users.read tweet.read offline.access tweet.write")
 
