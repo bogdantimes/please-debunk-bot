@@ -5,7 +5,8 @@ const {
   CLIENT_SECRET,
   BEARER_TOKEN,
   GPT_KEY,
-  code_verifier
+  code_verifier,
+  PROMPT
 } = PropertiesService.getScriptProperties().getProperties();
 
 global.tick = function() {
@@ -34,9 +35,12 @@ global.tick = function() {
     if (refTweet.author_id !== BOT_ID && refTweetText) {
       console.log(refTweetText);
 
-      const neuralNetPrompt = `${refTweetText}
-      
-Please debunk it in short (no more than 250 characters!!) tweet form.`;
+      const neuralNetPrompt = `Here's a tweet:
+"""
+${refTweetText}
+"""
+   
+${PROMPT}`;
 
       let maxTweetSize = 280;
       let tokenSize = 4;
