@@ -33,8 +33,8 @@ ${PROMPT}`;
     })
   });
 
-  if (response.getResponseCode() !== 200) {
-    throw new Error(`ChatGPT failed: ${response.getContentText()}`);
+  if (response.getResponseCode() >= 300) {
+    throw new Error(`ChatGPT failed ${response.getResponseCode()}: ${response.getContentText()}`);
   }
 
   const gptReply = JSON.parse(response.getContentText());
@@ -187,8 +187,37 @@ function reply(tweet: string, replyTo: string) {
       reply: { in_reply_to_tweet_id: replyTo }
     })
   });
-  if (response.getResponseCode() !== 200) {
-    throw new Error(`Error posting tweet: ${response.getContentText()}`);
+  if (response.getResponseCode() >= 300) {
+    throw new Error(`Error posting tweet ${response.getResponseCode()}: ${response.getContentText()}`);
+  }
+  const data = JSON.parse(response.getContentText());
+  console.log(data);
+}
+
+/**
+ * Send the Tweet
+ * @Param tweet Text to tweet
+ * @Param replyTo id of the tweet to reply
+ * @return the ID of the current Tweet
+ */
+function retweetWithComment(comment: string, tweetId: string) {
+  console.log(comment);
+  const url = `https://api.twitter.com/2/tweets`;
+  const response = UrlFetchApp.fetch(url, {
+    method: "post",
+    contentType: "application/json",
+    muteHttpExceptions: true,
+    headers: {
+      "User-Agent": "v2TweetJS",
+      authorization: `Bearer ${getService().getAccessToken()}`
+    },
+    payload: JSON.stringify({
+      text: comment,
+      quote_tweet_id: tweetId
+    })
+  });
+  if (response.getResponseCode() >= 300) {
+    throw new Error(`Error posting tweet ${response.getResponseCode()}: ${response.getContentText()}`);
   }
   const data = JSON.parse(response.getContentText());
   console.log(data);
@@ -220,7 +249,7 @@ global.debunkRecentTweets = function() {
     try {
       const debunkText = debunkWithGPT(tweetText);
       if (debunkText) {
-        reply(debunkText, tweet.id);
+        retweetWithComment(debunkText, tweet.id);
       }
     } catch (e) {
       console.error(e);
