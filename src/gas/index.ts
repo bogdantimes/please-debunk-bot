@@ -12,6 +12,15 @@ const {
 global.tick = function() {
   let lastMentionId = CacheService.getScriptCache().get("lastMentionId") as string;
 
+  const service = getService();
+  if (!service.hasAccess()) {
+    if (lastMentionId) {
+      CacheService.getScriptCache().put("lastMentionId", lastMentionId, MAX_EXPIRATION);
+    }
+    const authorizationUrl = service.getAuthorizationUrl();
+    throw new Error(`Authorization failed. Open the following URL and re-run the script: ${authorizationUrl}`);
+  }
+
   let url = `https://api.twitter.com/2/users/${BOT_ID}/mentions?max_results=100&expansions=referenced_tweets.id`;
   if (lastMentionId) {
     url += `&since_id=${lastMentionId}`;
@@ -107,11 +116,11 @@ function getService() {
 /**
  * Reset the OAuth2 Twitter Service
  */
-function reset() {
+global.reset = function() {
   getService().reset();
   PropertiesService.getScriptProperties().deleteProperty("code_challenge");
   PropertiesService.getScriptProperties().deleteProperty("code_verifier");
-}
+};
 
 /**
  * Generate PKCE Challenge Verifier for Permission for OAuth2 Twitter Service
@@ -155,28 +164,20 @@ global.authCallback = function(request) {
  */
 function reply(tweet: string, replyTo: string) {
   console.log(tweet);
-  const service = getService();
-  if (service.hasAccess()) {
-    const url = `https://api.twitter.com/2/tweets`;
-    const response = UrlFetchApp.fetch(url, {
-      method: "post",
-      contentType: "application/json",
-      headers: {
-        "User-Agent": "v2TweetJS",
-        authorization: `Bearer ${service.getAccessToken()}`
-      },
-      payload: JSON.stringify({
-        text: tweet,
-        reply: { in_reply_to_tweet_id: replyTo }
-      })
-    });
-    const result = JSON.parse(response.getContentText());
-    console.log(result);
-    return result.data.id;
-  } else {
-    const authorizationUrl = service.getAuthorizationUrl();
-    console.log("Open the following URL and re-run the script: %s",
-      authorizationUrl);
-    throw new Error("Authorization failed");
-  }
+  const url = `https://api.twitter.com/2/tweets`;
+  const response = UrlFetchApp.fetch(url, {
+    method: "post",
+    contentType: "application/json",
+    headers: {
+      "User-Agent": "v2TweetJS",
+      authorization: `Bearer ${getService().getAccessToken()}`
+    },
+    payload: JSON.stringify({
+      text: tweet,
+      reply: { in_reply_to_tweet_id: replyTo }
+    })
+  });
+  const result = JSON.parse(response.getContentText());
+  console.log(result);
+  return result.data.id;
 }
