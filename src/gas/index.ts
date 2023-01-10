@@ -36,6 +36,7 @@ global.tick = function() {
   console.log(mentions);
 
   mentions?.data?.forEach((m: any) => {
+    console.log(m.referenced_tweets);
     // do not debunk if already debunked
     const alreadyDebunked = m.referenced_tweets?.find((ref: any) => ref.text?.toLowerCase().includes("@pleasedebunk"));
     if (alreadyDebunked) return;
