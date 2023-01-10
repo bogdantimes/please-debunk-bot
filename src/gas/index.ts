@@ -72,13 +72,14 @@ global.tick = function() {
 
   mentions?.data?.forEach((m: any) => {
     console.log("ref tweets", m.referenced_tweets);
-    const refTweet = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
-    const refTweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
     // do not debunk own tweets
+    const refTweet = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
     if (refTweet?.author_id === BOT_ID) return;
 
     // do not debunk if already debunked
-    if (refTweetText && !refTweetText.includes("@pleasedebunk")) {
+    const debunked = mentions.includes?.tweets?.any((t: any) => t.text.includes("@pleasedebunk"));
+    if (!debunked) {
+      const refTweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
       console.log(refTweetText);
       const debunkText = debunkWithGPT(refTweetText);
       reply(debunkText || `I cannot debunk or confirm this. #DYOR 😓`, m.id);
