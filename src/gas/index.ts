@@ -10,9 +10,13 @@ const {
 } = PropertiesService.getScriptProperties().getProperties();
 
 function debunkWithGPT(tweet: string) {
+  // remove @mentions from the text
+  const cleanText = tweet.replace(/@\w+/g, "");
+  console.log(cleanText);
+
   const neuralNetPrompt = `Here's a tweet:
 """
-${tweet}
+${cleanText}
 """
    
 ${PROMPT}`;
@@ -87,10 +91,9 @@ global.tick = function() {
     });
     if (!debunked) {
       const refTweet = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
-      const refTweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
-      console.log(refTweetText);
-      const debunkText = debunkWithGPT(refTweetText);
-      reply(debunkText || `I cannot debunk or confirm this. #DYOR 😓`, m.id);
+      const origText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
+      const debunkReply = debunkWithGPT(origText);
+      reply(debunkReply || `I cannot debunk or confirm this. #DYOR 😓`, m.id);
     }
 
     lastMentionId = m.id;
