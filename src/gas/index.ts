@@ -90,9 +90,9 @@ global.tick = function() {
       return t.author_id === BOT_ID || t.text.includes("@pleasedebunk");
     });
     if (!debunked) {
-      const refTweet = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
-      const origText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === refTweet.id)?.text;
-      const debunkReply = debunkWithGPT(origText);
+      const tweetObj = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
+      const tweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === tweetObj.id)?.text;
+      const debunkReply = debunkWithGPT(tweetText);
       reply(debunkReply || `I cannot debunk or confirm this. #DYOR 😓`, m.id);
     }
 
@@ -257,10 +257,8 @@ global.debunkRecentTweets = function() {
   const result = JSON.parse(response.getContentText());
   result?.data?.reverse().forEach((tweet: any) => {
     Utilities.sleep(5000); // sleep 5 seconds to avoid rate limits
-    console.log(tweet);
-    const tweetText = tweet.text;
     try {
-      const debunkText = debunkWithGPT(tweetText);
+      const debunkText = debunkWithGPT(tweet.text);
       if (debunkText) {
         retweetWithComment(debunkText, tweet.id);
       }
