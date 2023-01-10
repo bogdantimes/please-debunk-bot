@@ -6,6 +6,7 @@ const {
   GPT_KEY,
   code_verifier,
   PROMPT,
+  PROMPT_INTRO,
   SEARCH_QUERY
 } = PropertiesService.getScriptProperties().getProperties();
 
@@ -14,7 +15,7 @@ function debunkWithGPT(tweet: string) {
   const cleanText = tweet.replace(/@\w+/g, "");
   console.log(cleanText);
 
-  const neuralNetPrompt = `Here's a tweet:
+  const neuralNetPrompt = `${PROMPT_INTRO}
 """
 ${cleanText}
 """
