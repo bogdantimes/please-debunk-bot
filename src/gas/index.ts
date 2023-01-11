@@ -260,9 +260,11 @@ global.debunkRecentTweets = function() {
   result?.data?.reverse().forEach((tweet: any) => {
     Utilities.sleep(5000); // sleep 5 seconds to avoid rate limits
     try {
-      const debunkText = debunkWithGPT(tweet.text);
-      if (!silentMode && debunkText) {
-        retweetWithComment(debunkText, tweet.id);
+      if (tweet.text.length > 30) {
+        const debunkText = debunkWithGPT(tweet.text);
+        if (!silentMode && debunkText) {
+          retweetWithComment(debunkText, tweet.id);
+        }
       }
     } catch (e) {
       console.error(e);
