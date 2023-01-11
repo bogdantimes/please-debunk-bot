@@ -8,7 +8,8 @@ const {
   PROMPT,
   PROMPT_INTRO,
   SEARCH_QUERY,
-  SILENT_MODE
+  SILENT_MODE,
+  MAX_RESULTS,
 } = PropertiesService.getScriptProperties().getProperties();
 
 const silentMode = !!+SILENT_MODE;
@@ -246,7 +247,7 @@ global.debunkRecentTweets = function() {
   let startTime: string = CacheService.getScriptCache().get("startTime") || "";
 
   const start_time = startTime ? `start_time=${startTime}&` : "";
-  const url = `https://api.twitter.com/2/tweets/search/recent?${start_time}tweet.fields=created_at,public_metrics&${SEARCH_QUERY}&max_results=100`;
+  const url = `https://api.twitter.com/2/tweets/search/recent?${start_time}tweet.fields=created_at,public_metrics&${SEARCH_QUERY}&max_results=${MAX_RESULTS}`;
   const response = UrlFetchApp.fetch(url, {
     method: "get",
     contentType: "application/json",
