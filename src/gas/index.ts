@@ -21,7 +21,6 @@ ${tweet}
    
 ${PROMPT}`;
 
-  console.log("prompt", neuralNetPrompt);
   let maxTweetSize = 280;
   let tokenSize = 4;
   const response = UrlFetchApp.fetch(`https://api.openai.com/v1/completions`, {
