@@ -67,7 +67,7 @@ global.tick = function() {
     throw new Error(`Authorization failed. Open the following URL and re-run the script: ${authorizationUrl}`);
   }
 
-  let url = `https://api.twitter.com/2/users/${BOT_ID}/mentions?max_results=5&expansions=referenced_tweets.id&tweet.fields=author_id`;
+  let url = `https://api.twitter.com/2/users/${BOT_ID}/mentions?max_results=5&expansions=referenced_tweets.id&tweet.fields=author_id,non_public_metrics`;
   if (lastMentionId) {
     url += `&since_id=${lastMentionId}`;
   }
@@ -247,7 +247,7 @@ global.debunkRecentTweets = function() {
   let startTime: string = CacheService.getScriptCache().get("startTime") || "";
 
   const start_time = startTime ? `start_time=${startTime}&` : "";
-  const url = `https://api.twitter.com/2/tweets/search/recent?${start_time}tweet.fields=created_at&${SEARCH_QUERY}&max_results=10`;
+  const url = `https://api.twitter.com/2/tweets/search/recent?${start_time}tweet.fields=created_at,non_public_metrics&${SEARCH_QUERY}&max_results=10`;
   const response = UrlFetchApp.fetch(url, {
     method: "get",
     contentType: "application/json",
