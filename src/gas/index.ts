@@ -7,15 +7,16 @@ const {
   code_verifier,
   PROMPT,
   PROMPT_INTRO,
-  SEARCH_QUERY
+  SEARCH_QUERY,
+  SILENT_MODE
 } = PropertiesService.getScriptProperties().getProperties();
 
+const silentMode = !!+SILENT_MODE;
+
 function debunkWithGPT(tweet: string) {
-  // remove @mentions from the text
-  const cleanText = tweet.replace(/@\w+/g, "");
   const neuralNetPrompt = `${PROMPT_INTRO}
 """
-${cleanText}
+${tweet}
 """
    
 ${PROMPT}`;
@@ -43,7 +44,7 @@ ${PROMPT}`;
 
   const gptReply = JSON.parse(response.getContentText());
   const result = gptReply?.choices?.[0]?.text?.trim() || "";
-  console.log("GPT", result)
+  console.log("GPT", result);
   return (
     result.length < 5 ||
     result.endsWith(`0`) ||
@@ -94,10 +95,14 @@ global.tick = function() {
       const tweetObj = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
       const tweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === tweetObj.id)?.text;
       const debunkReply = debunkWithGPT(tweetText);
-      reply(debunkReply || `I cannot debunk or confirm this. #DYOR 😓`, m.id);
+      if (!silentMode) {
+        reply(debunkReply || `I cannot debunk or confirm this. #DYOR 😓`, m.id);
+      }
     }
 
-    lastMentionId = m.id;
+    if (!silentMode) {
+      lastMentionId = m.id;
+    }
   });
 
   if (lastMentionId) {
@@ -203,8 +208,7 @@ function reply(tweet: string, replyTo: string) {
   if (response.getResponseCode() >= 300) {
     throw new Error(`Error posting tweet ${response.getResponseCode()}: ${response.getContentText()}`);
   }
-  const data = JSON.parse(response.getContentText());
-  console.log(data);
+  console.log(response.getContentText());
 }
 
 /**
@@ -257,14 +261,16 @@ global.debunkRecentTweets = function() {
     Utilities.sleep(5000); // sleep 5 seconds to avoid rate limits
     try {
       const debunkText = debunkWithGPT(tweet.text);
-      if (debunkText) {
+      if (!silentMode && debunkText) {
         retweetWithComment(debunkText, tweet.id);
       }
     } catch (e) {
       console.error(e);
     }
-    startTime = tweet.created_at;
-    CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
+    if (!silentMode) {
+      startTime = tweet.created_at;
+      CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
+    }
   });
 };
 
