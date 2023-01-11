@@ -256,9 +256,18 @@ global.debunkRecentTweets = function() {
       authorization: `Bearer ${getService().getAccessToken()}`
     }
   });
-  const result = JSON.parse(response.getContentText());
+
+  const result = JSON.parse(response.getContentText())
+    ?.data
+    ?.forEach((tweet: any) => {
+      tweet.impression_count = tweet.public_metrics?.impression_count;
+    });
+
   console.log("tweets", result);
-  result?.data?.reverse()
+
+  result
+    ?.data
+    ?.reverse()
     .filter((t: any) => {
       return t.public_metrics.impression_count > 100;
     })
