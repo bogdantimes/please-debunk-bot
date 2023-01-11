@@ -256,26 +256,19 @@ global.debunkRecentTweets = function() {
     }
   });
 
-  const result = JSON.parse(response.getContentText())
-    ?.data
-    ?.forEach((tweet: any) => {
-      tweet.impression_count = tweet.public_metrics?.impression_count;
-    });
-
-  console.log("tweets", result);
+  const result = JSON.parse(response.getContentText());
 
   result
     ?.data
-    ?.reverse()
-    .filter((t: any) => {
-      return t.public_metrics.impression_count > 100;
-    })
+    ?.filter(t => t.public_metrics.reply_count > 0)
+    .reverse()
     .forEach((tweet: any) => {
       console.log(tweet);
-      Utilities.sleep(1000); // cool down
       try {
+        Utilities.sleep(1000); // cool down
         const debunkText = debunkWithGPT(tweet.text);
         if (!silentMode && debunkText) {
+          Utilities.sleep(4000); // cool down
           retweetWithComment(debunkText, tweet.id);
         }
       } catch (e) {
