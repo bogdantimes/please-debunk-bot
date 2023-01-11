@@ -247,7 +247,7 @@ global.debunkRecentTweets = function() {
   let startTime: string = CacheService.getScriptCache().get("startTime") || "";
 
   const start_time = startTime ? `start_time=${startTime}&` : "";
-  const url = `https://api.twitter.com/2/tweets/search/recent?${start_time}tweet.fields=created_at,public_metrics&${SEARCH_QUERY}&max_results=10`;
+  const url = `https://api.twitter.com/2/tweets/search/recent?${start_time}tweet.fields=created_at,public_metrics&${SEARCH_QUERY}&max_results=100`;
   const response = UrlFetchApp.fetch(url, {
     method: "get",
     contentType: "application/json",
@@ -257,23 +257,26 @@ global.debunkRecentTweets = function() {
     }
   });
   const result = JSON.parse(response.getContentText());
-  console.log(response.getContentText());
-  result?.data?.reverse().forEach((tweet: any) => {
-    Utilities.sleep(5000); // sleep 5 seconds to avoid rate limits
-    try {
-      if (tweet.text.length > 30) {
+  console.log("tweets", result);
+  result?.data?.reverse()
+    .filter((t: any) => {
+      return t.public_metrics.impression_count > 100;
+    })
+    .forEach((tweet: any) => {
+      console.log(tweet);
+      Utilities.sleep(1000); // cool down
+      try {
         const debunkText = debunkWithGPT(tweet.text);
         if (!silentMode && debunkText) {
           retweetWithComment(debunkText, tweet.id);
         }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
-    }
-    if (!silentMode) {
-      startTime = tweet.created_at;
-      CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
-    }
-  });
+      if (!silentMode) {
+        startTime = tweet.created_at;
+        CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
+      }
+    });
 };
 
