@@ -96,7 +96,7 @@ global.tick = function() {
       const tweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === tweetObj.id)?.text;
       const debunkReply = debunkWithGPT(tweetText);
       if (!silentMode) {
-        reply(debunkReply || `I cannot debunk or confirm this. #DYOR 😓`, m.id);
+        reply(debunkReply || `The tweet is either true or there's nothing to debunk. #DYOR 🫡`, m.id);
       }
     }
 
