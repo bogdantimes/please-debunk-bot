@@ -303,7 +303,9 @@ global.debunkRecentTweets = function () {
         console.error(e);
       }
       if (!silentMode) {
-        startTime = tweet.created_at;
+        const d = new Date(tweet.created_at);
+        d.setSeconds(d.getSeconds() + 1);
+        startTime = d.toISOString();
       }
     });
   }
