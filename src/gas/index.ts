@@ -304,12 +304,9 @@ global.debunkRecentTweets = function () {
       }
       if (!silentMode) {
         startTime = tweet.created_at;
-        CacheService.getScriptCache().put(
-          "startTime",
-          startTime,
-          MAX_EXPIRATION
-        );
       }
     });
   }
+
+  CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
 };
