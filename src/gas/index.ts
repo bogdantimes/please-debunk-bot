@@ -51,8 +51,9 @@ ${PROMPT}`;
   console.log("GPT", result);
   return result.length < 5 ||
     result.endsWith(`0`) ||
-    result.endsWith(`"0".`) ||
-    result.endsWith(`0.`)
+    result.endsWith(`0.`) ||
+    result.endsWith(`0"`) ||
+    result.endsWith(`0".`)
     ? ""
     : result.replace(/^"/, "").replace(/"$/, "");
 }
@@ -93,23 +94,18 @@ global.tick = function () {
   console.log("included tweets", mentions.includes?.tweets);
 
   mentions?.data?.forEach((m: any) => {
-    console.log("ref tweets", m.referenced_tweets);
+    console.log("mention", m);
 
-    // do not debunk own tweets
-    // do not debunk if already debunked
-    const debunked = mentions.includes?.tweets?.find((t: any) => {
-      return t.author_id === BOT_ID || t.text.includes("@pleasedebunk");
-    });
-    if (!debunked) {
-      const tweetObj = m.referenced_tweets?.find(
-        (ref: any) => ref.type === "replied_to"
-      );
-      const tweetText: string = mentions.includes?.tweets?.find(
-        (tweet: any) => tweet.id === tweetObj.id
-      )?.text;
-      const debunkReply = debunkWithGPT(tweetText || m.text);
+    const refTweet = mentions.includes?.tweets?.[0];
+    const isNewConversation = !refTweet?.text.match(/@pleasedebunk/gi);
+    const notOwnReply = refTweet?.author_id !== BOT_ID;
+    if (isNewConversation && notOwnReply) {
+      console.log("ref tweet", refTweet);
+      // if no mention text as well, but remove @PleaseDebunk (ignore case) from it
+      const text = refTweet?.text || m.text.replace(/@pleasedebunk/gi, "");
+      const result = debunkWithGPT(text);
       if (!silentMode) {
-        reply(debunkReply || `I can't tell with confidence. #DYOR 🫡`, m.id);
+        reply(result || `I can't tell with confidence. #DYOR 🫡`, m.id);
       }
     }
 
