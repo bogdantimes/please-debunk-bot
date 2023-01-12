@@ -303,12 +303,13 @@ global.debunkRecentTweets = function () {
         console.error(e);
       }
       if (!silentMode) {
-        const d = new Date(tweet.created_at);
-        d.setSeconds(d.getSeconds() + 1);
-        startTime = d.toISOString();
+        startTime = tweet.created_at;
       }
     });
   }
 
+  const d = new Date(startTime);
+  d.setSeconds(d.getSeconds() + 1);
+  startTime = d.toISOString();
   CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
 };
