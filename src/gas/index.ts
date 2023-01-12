@@ -9,10 +9,12 @@ const {
   PROMPT_INTRO,
   SEARCH_QUERY,
   SILENT_MODE,
-  MAX_RESULTS
+  MAX_RESULTS,
+  IMPRESSIONS,
 } = PropertiesService.getScriptProperties().getProperties();
 
 const silentMode = !!+SILENT_MODE;
+const impressions = IMPRESSIONS ? +IMPRESSIONS : 1;
 
 function debunkWithGPT(tweet: string) {
   const neuralNetPrompt = `${PROMPT_INTRO}
@@ -28,56 +30,63 @@ ${PROMPT}`;
     method: "post",
     contentType: "application/json",
     headers: {
-      "Authorization": `Bearer ${GPT_KEY}`
+      Authorization: `Bearer ${GPT_KEY}`,
     },
     muteHttpExceptions: true,
     payload: JSON.stringify({
       model: "text-davinci-003",
       max_tokens: maxTweetSize / tokenSize,
-      prompt: neuralNetPrompt
-    })
+      prompt: neuralNetPrompt,
+    }),
   });
 
   if (response.getResponseCode() >= 300) {
-    throw new Error(`ChatGPT failed ${response.getResponseCode()}: ${response.getContentText()}`);
+    throw new Error(
+      `ChatGPT failed ${response.getResponseCode()}: ${response.getContentText()}`
+    );
   }
 
   const gptReply = JSON.parse(response.getContentText());
   const result = gptReply?.choices?.[0]?.text?.trim() || "";
   console.log("GPT", result);
-  return (
-    result.length < 5 ||
+  return result.length < 5 ||
     result.endsWith(`0`) ||
     result.endsWith(`"0".`) ||
     result.endsWith(`0.`)
-  ) ? "" : result
-    .replace(/^"/, "")
-    .replace(/"$/, "");
+    ? ""
+    : result.replace(/^"/, "").replace(/"$/, "");
 }
 
-global.tick = function() {
-  let lastMentionId = CacheService.getScriptCache().get("lastMentionId") as string;
+global.tick = function () {
+  let lastMentionId = CacheService.getScriptCache().get(
+    "lastMentionId"
+  ) as string;
 
   const service = getService();
   if (!service.hasAccess()) {
     if (lastMentionId) {
-      CacheService.getScriptCache().put("lastMentionId", lastMentionId, MAX_EXPIRATION);
+      CacheService.getScriptCache().put(
+        "lastMentionId",
+        lastMentionId,
+        MAX_EXPIRATION
+      );
     }
     const authorizationUrl = service.getAuthorizationUrl();
-    throw new Error(`Authorization failed. Open the following URL and re-run the script: ${authorizationUrl}`);
+    throw new Error(
+      `Authorization failed. Open the following URL and re-run the script: ${authorizationUrl}`
+    );
   }
 
   let url = `https://api.twitter.com/2/users/${BOT_ID}/mentions?max_results=5&expansions=referenced_tweets.id&tweet.fields=author_id,public_metrics`;
   if (lastMentionId) {
     url += `&since_id=${lastMentionId}`;
   }
-  const response = UrlFetchApp.fetch(url,
-    {
-      headers: {
-        "User-Agent": "v2UserMentionssJS",
-        authorization: `Bearer ${service.getAccessToken()}`
-      }
-    });
+  const response = UrlFetchApp.fetch(url, {
+    headers: {
+      "User-Agent": "v2UserMentionssJS",
+      authorization: `Bearer ${service.getAccessToken()}`,
+    },
+  });
 
   const mentions = JSON.parse(response.getContentText());
   console.log("mentions", mentions);
@@ -92,8 +101,12 @@ global.tick = function() {
       return t.author_id === BOT_ID || t.text.includes("@pleasedebunk");
     });
     if (!debunked) {
-      const tweetObj = m.referenced_tweets?.find((ref: any) => ref.type === "replied_to");
-      const tweetText: string = mentions.includes?.tweets?.find((tweet: any) => tweet.id === tweetObj.id)?.text;
+      const tweetObj = m.referenced_tweets?.find(
+        (ref: any) => ref.type === "replied_to"
+      );
+      const tweetText: string = mentions.includes?.tweets?.find(
+        (tweet: any) => tweet.id === tweetObj.id
+      )?.text;
       const debunkReply = debunkWithGPT(tweetText || m.text);
       if (!silentMode) {
         reply(debunkReply || `I can't tell with confidence. #DYOR 🫡`, m.id);
@@ -106,7 +119,11 @@ global.tick = function() {
   });
 
   if (lastMentionId) {
-    CacheService.getScriptCache().put("lastMentionId", lastMentionId, MAX_EXPIRATION);
+    CacheService.getScriptCache().put(
+      "lastMentionId",
+      lastMentionId,
+      MAX_EXPIRATION
+    );
   }
 };
 
@@ -117,34 +134,40 @@ global.tick = function() {
 function getService() {
   pkceChallengeVerifier();
   const store = PropertiesService.getScriptProperties();
-  // @ts-ignore
-  return OAuth2.createService("twitter")
-    .setAuthorizationBaseUrl("https://twitter.com/i/oauth2/authorize")
-    .setTokenUrl("https://api.twitter.com/2/oauth2/token?code_verifier=" + store.getProperty("code_verifier"))
-    // Set the client ID and secret.
-    .setClientId(CLIENT_ID)
-    .setClientSecret(CLIENT_SECRET)
-    .setCallbackFunction("authCallback")
-    // Set the property store where authorized tokens should be persisted.
-    .setPropertyStore(store)
-    .setCache(CacheService.getScriptCache())
-    // Set the scopes to request (space-separated for Twitter services).
-    .setScope("users.read tweet.read offline.access tweet.write")
+  return (
+    // @ts-ignore
+    OAuth2.createService("twitter")
+      .setAuthorizationBaseUrl("https://twitter.com/i/oauth2/authorize")
+      .setTokenUrl(
+        "https://api.twitter.com/2/oauth2/token?code_verifier=" +
+          store.getProperty("code_verifier")
+      )
+      // Set the client ID and secret.
+      .setClientId(CLIENT_ID)
+      .setClientSecret(CLIENT_SECRET)
+      .setCallbackFunction("authCallback")
+      // Set the property store where authorized tokens should be persisted.
+      .setPropertyStore(store)
+      .setCache(CacheService.getScriptCache())
+      // Set the scopes to request (space-separated for Twitter services).
+      .setScope("users.read tweet.read offline.access tweet.write")
 
-    // Add parameters in the authorization url
-    .setParam("response_type", "code")
-    .setParam("code_challenge_method", "S256")
-    .setParam("code_challenge", store.getProperty("code_challenge"))
-    .setTokenHeaders({
-      "Authorization": "Basic " + Utilities.base64Encode(CLIENT_ID + ":" + CLIENT_SECRET),
-      "Content-Type": "application/x-www-form-urlencoded"
-    });
+      // Add parameters in the authorization url
+      .setParam("response_type", "code")
+      .setParam("code_challenge_method", "S256")
+      .setParam("code_challenge", store.getProperty("code_challenge"))
+      .setTokenHeaders({
+        Authorization:
+          "Basic " + Utilities.base64Encode(CLIENT_ID + ":" + CLIENT_SECRET),
+        "Content-Type": "application/x-www-form-urlencoded",
+      })
+  );
 }
 
 /**
  * Reset the OAuth2 Twitter Service
  */
-global.reset = function() {
+global.reset = function () {
   getService().reset();
   PropertiesService.getScriptProperties().deleteProperty("code_challenge");
   PropertiesService.getScriptProperties().deleteProperty("code_verifier");
@@ -156,11 +179,15 @@ global.reset = function() {
 function pkceChallengeVerifier() {
   if (!code_verifier) {
     let verifier = "";
-    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    const possible =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
     for (let i = 0; i < 128; i++) {
       verifier += possible.charAt(Math.floor(Math.random() * possible.length));
     }
-    const sha256hash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, verifier);
+    const sha256hash = Utilities.computeDigest(
+      Utilities.DigestAlgorithm.SHA_256,
+      verifier
+    );
     const challenge = Utilities.base64Encode(sha256hash)
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
@@ -174,7 +201,7 @@ function pkceChallengeVerifier() {
 /**
  * Handles the OAuth callback.
  */
-global.authCallback = function(request) {
+global.authCallback = function (request) {
   const service = getService();
   const authorized = service.handleCallback(request);
   if (authorized) {
@@ -198,15 +225,17 @@ function reply(tweet: string, replyTo: string) {
     muteHttpExceptions: true,
     headers: {
       "User-Agent": "v2TweetJS",
-      authorization: `Bearer ${getService().getAccessToken()}`
+      authorization: `Bearer ${getService().getAccessToken()}`,
     },
     payload: JSON.stringify({
       text: tweet,
-      reply: { in_reply_to_tweet_id: replyTo }
-    })
+      reply: { in_reply_to_tweet_id: replyTo },
+    }),
   });
   if (response.getResponseCode() >= 300) {
-    throw new Error(`Error posting tweet ${response.getResponseCode()}: ${response.getContentText()}`);
+    throw new Error(
+      `Error posting tweet ${response.getResponseCode()}: ${response.getContentText()}`
+    );
   }
   console.log(response.getContentText());
 }
@@ -225,15 +254,17 @@ function retweetWithComment(comment: string, tweetId: string) {
     muteHttpExceptions: true,
     headers: {
       "User-Agent": "v2TweetJS",
-      authorization: `Bearer ${getService().getAccessToken()}`
+      authorization: `Bearer ${getService().getAccessToken()}`,
     },
     payload: JSON.stringify({
       text: comment,
-      quote_tweet_id: tweetId
-    })
+      quote_tweet_id: tweetId,
+    }),
   });
   if (response.getResponseCode() >= 300) {
-    throw new Error(`Error posting tweet ${response.getResponseCode()}: ${response.getContentText()}`);
+    throw new Error(
+      `Error posting tweet ${response.getResponseCode()}: ${response.getContentText()}`
+    );
   }
   console.log(response.getContentText());
 }
@@ -243,7 +274,7 @@ function retweetWithComment(comment: string, tweetId: string) {
  * and contain the phrase "is it true?".
  * Then debunks them.
  */
-global.debunkRecentTweets = function() {
+global.debunkRecentTweets = function () {
   let startTime: string = CacheService.getScriptCache().get("startTime") || "";
 
   const start_time = startTime ? `start_time=${startTime}&` : "";
@@ -253,13 +284,15 @@ global.debunkRecentTweets = function() {
     contentType: "application/json",
     headers: {
       "User-Agent": "v2RecentSearchJS",
-      authorization: `Bearer ${getService().getAccessToken()}`
-    }
+      authorization: `Bearer ${getService().getAccessToken()}`,
+    },
   });
 
   const result = JSON.parse(response.getContentText());
 
-  const tweets = result.data?.filter(t => t.public_metrics.impression_count > 1000);
+  const tweets = result.data?.filter(
+    (t) => t.public_metrics.impression_count >= impressions
+  );
   if (tweets?.length) {
     tweets.reverse().forEach((tweet: any) => {
       console.log(tweet);
@@ -275,9 +308,12 @@ global.debunkRecentTweets = function() {
       }
       if (!silentMode) {
         startTime = tweet.created_at;
-        CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
+        CacheService.getScriptCache().put(
+          "startTime",
+          startTime,
+          MAX_EXPIRATION
+        );
       }
     });
   }
 };
-
