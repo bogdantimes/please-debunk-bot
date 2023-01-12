@@ -9,7 +9,7 @@ const {
   PROMPT_INTRO,
   SEARCH_QUERY,
   SILENT_MODE,
-  MAX_RESULTS,
+  MAX_RESULTS
 } = PropertiesService.getScriptProperties().getProperties();
 
 const silentMode = !!+SILENT_MODE;
@@ -259,11 +259,9 @@ global.debunkRecentTweets = function() {
 
   const result = JSON.parse(response.getContentText());
 
-  result
-    ?.data
-    ?.filter(t => t.public_metrics.reply_count > 0)
-    .reverse()
-    .forEach((tweet: any) => {
+  const tweets = result.data?.filter(t => t.public_metrics.impression_count > 1000);
+  if (tweets?.length) {
+    tweets.reverse().forEach((tweet: any) => {
       console.log(tweet);
       try {
         Utilities.sleep(1000); // cool down
@@ -280,5 +278,6 @@ global.debunkRecentTweets = function() {
         CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
       }
     });
+  }
 };
 
