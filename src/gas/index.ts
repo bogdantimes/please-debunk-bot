@@ -6,6 +6,7 @@ const {
   GPT_KEY,
   code_verifier,
   PROMPT,
+  REPLY_PROMPT,
   PROMPT_INTRO,
   SEARCH_QUERY,
   SILENT_MODE,
@@ -16,13 +17,13 @@ const {
 const silentMode = !!+SILENT_MODE;
 const impressions = IMPRESSIONS ? +IMPRESSIONS : 1;
 
-function debunkWithGPT(tweet: string) {
+function debunkWithGPT(tweet: string, prompt: string) {
   const neuralNetPrompt = `${PROMPT_INTRO}
 """
 ${tweet}
 """
    
-${PROMPT}`;
+${prompt}`;
 
   let maxTweetSize = 280;
   let tokenSize = 4;
@@ -103,7 +104,7 @@ global.tick = function () {
       console.log("ref tweet", refTweet);
       // if no mention text as well, but remove @PleaseDebunk (ignore case) from it
       const text = refTweet?.text || m.text.replace(/@pleasedebunk/gi, "");
-      const result = debunkWithGPT(text);
+      const result = debunkWithGPT(text, REPLY_PROMPT);
       if (!silentMode) {
         reply(result || `I can't tell with confidence. #DYOR 🫡`, m.id);
       }
@@ -294,7 +295,7 @@ global.debunkRecentTweets = function () {
       console.log(tweet);
       try {
         Utilities.sleep(1000); // cool down
-        const debunkText = debunkWithGPT(tweet.text);
+        const debunkText = debunkWithGPT(tweet.text, PROMPT);
         if (!silentMode && debunkText) {
           Utilities.sleep(4000); // cool down
           retweetWithComment(debunkText, tweet.id);
