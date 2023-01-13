@@ -265,13 +265,16 @@ function retweetWithComment(comment: string, tweetId: string) {
   console.log(response.getContentText());
 }
 
-function getCheckedTweetIdsFromCache() {
+function getCheckedTweetIdsFromCache(): string[] {
+  const ids = CacheService.getScriptCache().get("checkedTweetIds");
+  return ids ? JSON.parse(ids) : [];
+}
+
+function saveCheckedTweetIdsToCache(checkedTweetIds: string[]) {
   const cache = CacheService.getScriptCache();
-  const checkedTweetIds = cache.get("checkedTweetIds");
-  if (checkedTweetIds) {
-    return JSON.parse(checkedTweetIds);
-  }
-  return [];
+  // Keep only the last 500 checked tweets
+  checkedTweetIds = checkedTweetIds.slice(-500);
+  cache.put("checkedTweetIds", JSON.stringify(checkedTweetIds), MAX_EXPIRATION);
 }
 
 /**
@@ -320,8 +323,5 @@ global.debunkRecentTweets = function () {
     });
   }
 
-  const cache = CacheService.getScriptCache();
-  // Keep only the last 500 checked tweets
-  checkedTweetIds = checkedTweetIds.slice(-500);
-  cache.put("checkedTweetIds", JSON.stringify(checkedTweetIds));
+  saveCheckedTweetIdsToCache(checkedTweetIds);
 };
