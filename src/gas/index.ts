@@ -299,6 +299,8 @@ global.debunkRecentTweets = function () {
   let checkedTweetIds = getCheckedTweetIdsFromCache();
   const tweets = result.data?.filter(
     (t) =>
+      // Only tweets that >= 50 symbols excluding mentions
+      t.text.replace(/@\w+/g, "").length >= 50 &&
       // Reply only non-replied tweets
       t.public_metrics.reply_count == 0 &&
       //  That have enough impressions
