@@ -9,13 +9,12 @@ const {
   REPLY_PROMPT,
   PROMPT_INTRO,
   SEARCH_QUERY,
-  SILENT_MODE,
-  MAX_RESULTS,
-  IMPRESSIONS,
+  SILENT_MODE = 1,
+  MAX_RESULTS = 10,
+  IMPRESSIONS = -1,
 } = PropertiesService.getScriptProperties().getProperties();
 
 const silentMode = !!+SILENT_MODE;
-const impressions = IMPRESSIONS ? +IMPRESSIONS : 1;
 
 function debunkWithGPT(tweet: string, prompt: string) {
   const neuralNetPrompt = `${PROMPT_INTRO}
@@ -266,16 +265,22 @@ function retweetWithComment(comment: string, tweetId: string) {
   console.log(response.getContentText());
 }
 
+function getCheckedTweetIdsFromCache() {
+  const cache = CacheService.getScriptCache();
+  const checkedTweetIds = cache.get("checkedTweetIds");
+  if (checkedTweetIds) {
+    return JSON.parse(checkedTweetIds);
+  }
+  return [];
+}
+
 /**
  * Fetches recent tweets that do not contain any media (only text),
  * and contain the phrase "is it true?".
  * Then debunks them.
  */
 global.debunkRecentTweets = function () {
-  let startTime: string = CacheService.getScriptCache().get("startTime") || "";
-
-  const start_time = startTime ? `start_time=${startTime}&` : "";
-  const url = `https://api.twitter.com/2/tweets/search/recent?${start_time}tweet.fields=created_at,public_metrics&${SEARCH_QUERY}&max_results=${MAX_RESULTS}`;
+  const url = `https://api.twitter.com/2/tweets/search/recent?tweet.fields=created_at,public_metrics&${SEARCH_QUERY}&max_results=${MAX_RESULTS}`;
   const response = UrlFetchApp.fetch(url, {
     method: "get",
     contentType: "application/json",
@@ -287,8 +292,16 @@ global.debunkRecentTweets = function () {
 
   const result = JSON.parse(response.getContentText());
 
+  const impressions = +IMPRESSIONS;
+  let checkedTweetIds = getCheckedTweetIdsFromCache();
   const tweets = result.data?.filter(
-    (t) => t.public_metrics.impression_count >= impressions
+    (t) =>
+      // Reply only non-replied tweets
+      t.public_metrics.reply_count == 0 &&
+      //  That have enough impressions
+      (impressions < 0 || t.public_metrics.impression_count >= impressions) &&
+      // That have not been checked before
+      !checkedTweetIds.includes(t.id)
   );
   if (tweets?.length) {
     tweets.reverse().forEach((tweet: any) => {
@@ -300,17 +313,15 @@ global.debunkRecentTweets = function () {
           Utilities.sleep(4000); // cool down
           retweetWithComment(debunkText, tweet.id);
         }
+        checkedTweetIds.push(tweet.id);
       } catch (e) {
         console.error(e);
-      }
-      if (!silentMode) {
-        startTime = tweet.created_at;
       }
     });
   }
 
-  const d = new Date(startTime);
-  d.setSeconds(d.getSeconds() + 1);
-  startTime = d.toISOString();
-  CacheService.getScriptCache().put("startTime", startTime, MAX_EXPIRATION);
+  const cache = CacheService.getScriptCache();
+  // Keep only the last 500 checked tweets
+  checkedTweetIds = checkedTweetIds.slice(-500);
+  cache.put("checkedTweetIds", JSON.stringify(checkedTweetIds));
 };
