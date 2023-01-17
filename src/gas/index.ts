@@ -99,8 +99,9 @@ global.tick = function () {
     const notOwnReply = refTweet?.author_id !== BOT_ID;
     if (isNewConversation && notOwnReply) {
       console.log("ref tweet", refTweet);
-      // Use mention text if no ref tweet, but remove @PleaseDebunk (ignore case) from it
-      const text = refTweet?.text || m.text.replace(/@pleasedebunk/gi, "");
+      // Use mention text if no ref tweet
+      // Remove mentions from tweet
+      const text = (refTweet?.text || m.text).replace(/@\w+/g, "");
       const result = debunkWithGPT(text, REPLY_PROMPT);
       if (!silentMode) {
         reply(result || `I can't tell with confidence. #DYOR 🫡`, m.id);
@@ -311,7 +312,9 @@ global.debunkRecentTweets = function () {
       console.log(tweet);
       try {
         Utilities.sleep(1000); // cool down
-        const debunkText = debunkWithGPT(tweet.text, PROMPT);
+        // Remove mentions from tweet
+        const text = tweet.text.replace(/@\w+/g, "");
+        const debunkText = debunkWithGPT(text, PROMPT);
         if (!silentMode && debunkText) {
           Utilities.sleep(4000); // cool down
           retweetWithComment(debunkText, tweet.id);
