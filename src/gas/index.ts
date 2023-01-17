@@ -49,13 +49,11 @@ ${prompt}`;
   const gptReply = JSON.parse(response.getContentText());
   const result = gptReply?.choices?.[0]?.text?.trim() || "";
   console.log("GPT", result);
-  return result.length < 5 ||
-    result.endsWith(`0`) ||
-    result.endsWith(`0.`) ||
-    result.endsWith(`0"`) ||
-    result.endsWith(`0".`)
-    ? ""
-    : result.replace(/^"/, "").replace(/"$/, "");
+  const trimResult = result
+    .replace(/0[."]*$/, "")
+    .replace(/^"/, "")
+    .replace(/"$/, "");
+  return trimResult < 10 ? "" : trimResult;
 }
 
 global.tick = function () {
@@ -101,7 +99,7 @@ global.tick = function () {
     const notOwnReply = refTweet?.author_id !== BOT_ID;
     if (isNewConversation && notOwnReply) {
       console.log("ref tweet", refTweet);
-      // if no mention text as well, but remove @PleaseDebunk (ignore case) from it
+      // Use mention text if no ref tweet, but remove @PleaseDebunk (ignore case) from it
       const text = refTweet?.text || m.text.replace(/@pleasedebunk/gi, "");
       const result = debunkWithGPT(text, REPLY_PROMPT);
       if (!silentMode) {
