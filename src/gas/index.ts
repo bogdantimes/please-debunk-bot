@@ -7,7 +7,7 @@ const {
   code_verifier,
   PROMPT,
   REPLY_PROMPT,
-  PROMPT_INTRO,
+  PROMPT_INTRO = "",
   SEARCH_QUERY,
   SILENT_MODE = 1,
   MAX_RESULTS = 10,
@@ -18,9 +18,8 @@ const silentMode = !!+SILENT_MODE;
 
 function debunkWithGPT(tweet: string, prompt: string) {
   const neuralNetPrompt = `${PROMPT_INTRO}
-"""
-${tweet}
-"""
+Date: ${new Date().toDateString()}
+Tweet: "${tweet}"
    
 ${prompt}`;
 
