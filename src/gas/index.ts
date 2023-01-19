@@ -49,10 +49,14 @@ ${prompt}`;
   const gptReply = JSON.parse(response.getContentText());
   const result = gptReply?.choices?.[0]?.text?.trim() || "";
   console.log("GPT", result);
+
+  if (result.startsWith("0")) return "";
+
   const trimResult = result
     .replace(/0[."]*$/, "")
     .replace(/^"/, "")
     .replace(/"$/, "");
+
   return trimResult < 10 ? "" : trimResult;
 }
 
