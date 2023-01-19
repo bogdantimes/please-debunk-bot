@@ -18,8 +18,8 @@ const silentMode = !!+SILENT_MODE;
 
 function debunkWithGPT(tweet: string, prompt: string) {
   const neuralNetPrompt = `${PROMPT_INTRO}
-Date: ${new Date().toDateString()}
-Tweet: "${tweet}"
+Tweet date: ${new Date().toDateString()}
+Tweet text: "${tweet}"
    
 ${prompt}`;
 
