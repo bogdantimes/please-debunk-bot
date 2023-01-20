@@ -16,10 +16,22 @@ const {
 
 const silentMode = !!+SILENT_MODE;
 
+function mapChoice(choice): string {
+  const result = choice?.text?.trim() || "";
+
+  if (result.startsWith("0")) return "";
+
+  const trimResult = result
+    .replace(/0[."]*$/, "")
+    .replace(/^"/, "")
+    .replace(/"$/, "");
+
+  return trimResult.length < 10 ? "" : trimResult;
+}
+
 function debunkWithGPT(tweet: string, prompt: string) {
-  const neuralNetPrompt = `${PROMPT_INTRO}
-Tweet date: ${new Date().toDateString()}
-Tweet text: "${tweet}"
+  const neuralNetPrompt = `Here's a tweet:
+"${tweet}".
    
 ${prompt}`;
 
@@ -46,17 +58,9 @@ ${prompt}`;
   }
 
   const gptReply = JSON.parse(response.getContentText());
-  const result = gptReply?.choices?.[0]?.text?.trim() || "";
-  console.log("GPT", result);
-
-  if (result.startsWith("0")) return "";
-
-  const trimResult = result
-    .replace(/0[."]*$/, "")
-    .replace(/^"/, "")
-    .replace(/"$/, "");
-
-  return trimResult < 10 ? "" : trimResult;
+  console.log("Choices", gptReply?.choices);
+  const clearReply = gptReply?.choices?.map(mapChoice).find((c) => c.length);
+  return clearReply || "";
 }
 
 global.tick = function () {
