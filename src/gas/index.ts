@@ -4,10 +4,9 @@ const {
   CLIENT_ID,
   CLIENT_SECRET,
   GPT_KEY,
-  code_verifier,
+  code_verifier: CODE_VERIFIER,
   PROMPT,
   REPLY_PROMPT,
-  PROMPT_INTRO = "",
   SEARCH_QUERY,
   SILENT_MODE = 1,
   MAX_RESULTS = 10,
@@ -17,35 +16,32 @@ const {
 const silentMode = !!+SILENT_MODE;
 
 function mapChoice(choice): string {
-  const result = choice?.text?.trim() || "";
+  const result = choice?.text?.trim() || ``;
 
-  if (result.startsWith("0")) return "";
+  if (result.startsWith(`0`)) return ``;
 
   const trimResult = result
-    .replace(/0[."]*$/, "")
-    .replace(/^"/, "")
-    .replace(/"$/, "");
+    .replace(/0[."]*$/, ``)
+    .replace(/^"/, ``)
+    .replace(/"$/, ``);
 
-  return trimResult.length < 10 ? "" : trimResult;
+  return trimResult.length < 10 ? `` : trimResult;
 }
 
-function debunkWithGPT(tweet: string, prompt: string) {
-  const neuralNetPrompt = `Here's a tweet:
-"${tweet}".
-   
-${prompt}`;
+function debunkWithGPT(tweet: string, prompt: string): string {
+  const neuralNetPrompt = `${prompt}\n\nTweet:\n${tweet}\n\nDebunk/confirmation:`;
 
-  let maxTweetSize = 280;
-  let tokenSize = 4;
+  const maxTweetSize = 280;
+  const tokenSize = 4;
   const response = UrlFetchApp.fetch(`https://api.openai.com/v1/completions`, {
-    method: "post",
-    contentType: "application/json",
+    method: `post`,
+    contentType: `application/json`,
     headers: {
       Authorization: `Bearer ${GPT_KEY}`,
     },
     muteHttpExceptions: true,
     payload: JSON.stringify({
-      model: "text-davinci-003",
+      model: `text-davinci-003`,
       max_tokens: maxTweetSize / tokenSize,
       prompt: neuralNetPrompt,
     }),
@@ -58,21 +54,21 @@ ${prompt}`;
   }
 
   const gptReply = JSON.parse(response.getContentText());
-  console.log("Choices", gptReply?.choices);
+  console.log(`Choices`, gptReply?.choices);
   const clearReply = gptReply?.choices?.map(mapChoice).find((c) => c.length);
-  return clearReply || "";
+  return clearReply || ``;
 }
 
 global.tick = function () {
   let lastMentionId = CacheService.getScriptCache().get(
-    "lastMentionId"
+    `lastMentionId`
   ) as string;
 
   const service = getService();
   if (!service.hasAccess()) {
     if (lastMentionId) {
       CacheService.getScriptCache().put(
-        "lastMentionId",
+        `lastMentionId`,
         lastMentionId,
         MAX_EXPIRATION
       );
@@ -89,26 +85,26 @@ global.tick = function () {
   }
   const response = UrlFetchApp.fetch(url, {
     headers: {
-      "User-Agent": "v2UserMentionssJS",
+      "User-Agent": `v2UserMentionssJS`,
       authorization: `Bearer ${service.getAccessToken()}`,
     },
   });
 
   const mentions = JSON.parse(response.getContentText());
-  console.log("mentions", mentions);
-  console.log("included tweets", mentions.includes?.tweets);
+  console.log(`mentions`, mentions);
+  console.log(`included tweets`, mentions.includes?.tweets);
 
   mentions?.data?.forEach((m: any) => {
-    console.log("mention", m);
+    console.log(`mention`, m);
 
     const refTweet = mentions.includes?.tweets?.[0];
     const isNewConversation = !refTweet?.text.match(/@pleasedebunk/gi);
     const notOwnReply = refTweet?.author_id !== BOT_ID;
     if (isNewConversation && notOwnReply) {
-      console.log("ref tweet", refTweet);
+      console.log(`ref tweet`, refTweet);
       // Use mention text if no ref tweet
       // Remove mentions from tweet
-      const text = (refTweet?.text || m.text).replace(/@\w+/g, "");
+      const text = (refTweet?.text || m.text).replace(/@\w+/g, ``);
       const result = debunkWithGPT(text, REPLY_PROMPT);
       if (!silentMode) {
         reply(result || `I can't tell with confidence. #DYOR 🫡`, m.id);
@@ -122,7 +118,7 @@ global.tick = function () {
 
   if (lastMentionId) {
     CacheService.getScriptCache().put(
-      "lastMentionId",
+      `lastMentionId`,
       lastMentionId,
       MAX_EXPIRATION
     );
@@ -133,35 +129,35 @@ global.tick = function () {
  * Create the OAuth2 Twitter Service
  * @return OAuth2 service
  */
-function getService() {
+function getService(): any {
   pkceChallengeVerifier();
   const store = PropertiesService.getScriptProperties();
   return (
-    // @ts-ignore
-    OAuth2.createService("twitter")
-      .setAuthorizationBaseUrl("https://twitter.com/i/oauth2/authorize")
+    // @ts-expect-error
+    OAuth2.createService(`twitter`)
+      .setAuthorizationBaseUrl(`https://twitter.com/i/oauth2/authorize`)
       .setTokenUrl(
-        "https://api.twitter.com/2/oauth2/token?code_verifier=" +
-          store.getProperty("code_verifier")
+        `https://api.twitter.com/2/oauth2/token?code_verifier=` +
+          (store.getProperty(`code_verifier`) as string)
       )
       // Set the client ID and secret.
       .setClientId(CLIENT_ID)
       .setClientSecret(CLIENT_SECRET)
-      .setCallbackFunction("authCallback")
+      .setCallbackFunction(`authCallback`)
       // Set the property store where authorized tokens should be persisted.
       .setPropertyStore(store)
       .setCache(CacheService.getScriptCache())
       // Set the scopes to request (space-separated for Twitter services).
-      .setScope("users.read tweet.read offline.access tweet.write")
+      .setScope(`users.read tweet.read offline.access tweet.write`)
 
       // Add parameters in the authorization url
-      .setParam("response_type", "code")
-      .setParam("code_challenge_method", "S256")
-      .setParam("code_challenge", store.getProperty("code_challenge"))
+      .setParam(`response_type`, `code`)
+      .setParam(`code_challenge_method`, `S256`)
+      .setParam(`code_challenge`, store.getProperty(`code_challenge`))
       .setTokenHeaders({
         Authorization:
-          "Basic " + Utilities.base64Encode(CLIENT_ID + ":" + CLIENT_SECRET),
-        "Content-Type": "application/x-www-form-urlencoded",
+          `Basic ` + Utilities.base64Encode(CLIENT_ID + `:` + CLIENT_SECRET),
+        "Content-Type": `application/x-www-form-urlencoded`,
       })
   );
 }
@@ -171,18 +167,17 @@ function getService() {
  */
 global.reset = function () {
   getService().reset();
-  PropertiesService.getScriptProperties().deleteProperty("code_challenge");
-  PropertiesService.getScriptProperties().deleteProperty("code_verifier");
+  PropertiesService.getScriptProperties().deleteProperty(`code_challenge`);
+  PropertiesService.getScriptProperties().deleteProperty(`code_verifier`);
 };
 
 /**
  * Generate PKCE Challenge Verifier for Permission for OAuth2 Twitter Service
  */
-function pkceChallengeVerifier() {
-  if (!code_verifier) {
-    let verifier = "";
-    const possible =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+function pkceChallengeVerifier(): void {
+  if (!CODE_VERIFIER) {
+    let verifier = ``;
+    const possible = `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~`;
     for (let i = 0; i < 128; i++) {
       verifier += possible.charAt(Math.floor(Math.random() * possible.length));
     }
@@ -191,12 +186,12 @@ function pkceChallengeVerifier() {
       verifier
     );
     const challenge = Utilities.base64Encode(sha256hash)
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
+      .replace(/\+/g, `-`)
+      .replace(/\//g, `_`)
+      .replace(/=+$/, ``);
     const store = PropertiesService.getScriptProperties();
-    store.setProperty("code_verifier", verifier);
-    store.setProperty("code_challenge", challenge);
+    store.setProperty(`code_verifier`, verifier);
+    store.setProperty(`code_challenge`, challenge);
   }
 }
 
@@ -207,9 +202,9 @@ global.authCallback = function (request) {
   const service = getService();
   const authorized = service.handleCallback(request);
   if (authorized) {
-    return HtmlService.createHtmlOutput("Success!");
+    return HtmlService.createHtmlOutput(`Success!`);
   } else {
-    return HtmlService.createHtmlOutput("Denied");
+    return HtmlService.createHtmlOutput(`Denied`);
   }
 };
 
@@ -219,14 +214,14 @@ global.authCallback = function (request) {
  * @Param replyTo id of the tweet to reply
  * @return the ID of the current Tweet
  */
-function reply(tweet: string, replyTo: string) {
+function reply(tweet: string, replyTo: string): void {
   const url = `https://api.twitter.com/2/tweets`;
   const response = UrlFetchApp.fetch(url, {
-    method: "post",
-    contentType: "application/json",
+    method: `post`,
+    contentType: `application/json`,
     muteHttpExceptions: true,
     headers: {
-      "User-Agent": "v2TweetJS",
+      "User-Agent": `v2TweetJS`,
       authorization: `Bearer ${getService().getAccessToken()}`,
     },
     payload: JSON.stringify({
@@ -248,14 +243,14 @@ function reply(tweet: string, replyTo: string) {
  * @Param replyTo id of the tweet to reply
  * @return the ID of the current Tweet
  */
-function retweetWithComment(comment: string, tweetId: string) {
+function retweetWithComment(comment: string, tweetId: string): void {
   const url = `https://api.twitter.com/2/tweets`;
   const response = UrlFetchApp.fetch(url, {
-    method: "post",
-    contentType: "application/json",
+    method: `post`,
+    contentType: `application/json`,
     muteHttpExceptions: true,
     headers: {
-      "User-Agent": "v2TweetJS",
+      "User-Agent": `v2TweetJS`,
       authorization: `Bearer ${getService().getAccessToken()}`,
     },
     payload: JSON.stringify({
@@ -272,15 +267,15 @@ function retweetWithComment(comment: string, tweetId: string) {
 }
 
 function getCheckedTweetIdsFromCache(): string[] {
-  const ids = CacheService.getScriptCache().get("checkedTweetIds");
+  const ids = CacheService.getScriptCache().get(`checkedTweetIds`);
   return ids ? JSON.parse(ids) : [];
 }
 
-function saveCheckedTweetIdsToCache(checkedTweetIds: string[]) {
+function saveCheckedTweetIdsToCache(checkedTweetIds: string[]): void {
   const cache = CacheService.getScriptCache();
   // Keep only the last 500 checked tweets
   checkedTweetIds = checkedTweetIds.slice(-500);
-  cache.put("checkedTweetIds", JSON.stringify(checkedTweetIds), MAX_EXPIRATION);
+  cache.put(`checkedTweetIds`, JSON.stringify(checkedTweetIds), MAX_EXPIRATION);
 }
 
 /**
@@ -291,10 +286,10 @@ function saveCheckedTweetIdsToCache(checkedTweetIds: string[]) {
 global.debunkRecentTweets = function () {
   const url = `https://api.twitter.com/2/tweets/search/recent?tweet.fields=created_at,public_metrics&${SEARCH_QUERY}&max_results=${MAX_RESULTS}`;
   const response = UrlFetchApp.fetch(url, {
-    method: "get",
-    contentType: "application/json",
+    method: `get`,
+    contentType: `application/json`,
     headers: {
-      "User-Agent": "v2RecentSearchJS",
+      "User-Agent": `v2RecentSearchJS`,
       authorization: `Bearer ${getService().getAccessToken()}`,
     },
   });
@@ -302,13 +297,13 @@ global.debunkRecentTweets = function () {
   const result = JSON.parse(response.getContentText());
 
   const impressions = +IMPRESSIONS;
-  let checkedTweetIds = getCheckedTweetIdsFromCache();
+  const checkedTweetIds = getCheckedTweetIdsFromCache();
   const tweets = result.data?.filter(
     (t) =>
       // Only tweets that >= 50 symbols excluding mentions
-      t.text.replace(/@\w+/g, "").length >= 50 &&
+      t.text.replace(/@\w+/g, ``).length >= 50 &&
       // Reply only non-replied tweets
-      t.public_metrics.reply_count == 0 &&
+      t.public_metrics.reply_count === 0 &&
       //  That have enough impressions
       (impressions < 0 || t.public_metrics.impression_count >= impressions) &&
       // That have not been checked before
@@ -320,7 +315,7 @@ global.debunkRecentTweets = function () {
       try {
         Utilities.sleep(1000); // cool down
         // Remove mentions from tweet
-        const text = tweet.text.replace(/@\w+/g, "");
+        const text = tweet.text.replace(/@\w+/g, ``);
         const debunkText = debunkWithGPT(text, PROMPT);
         if (!silentMode && debunkText) {
           Utilities.sleep(4000); // cool down
