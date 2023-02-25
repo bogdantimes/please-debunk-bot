@@ -29,7 +29,7 @@ function mapChoice(choice): string {
 }
 
 function debunkWithGPT(tweet: string, prompt: string): string {
-  const neuralNetPrompt = `${prompt}\n\nTweet:\n${tweet}\n\nDebunk/confirmation:`;
+  const neuralNetPrompt = `Tweet:\n"${tweet}".\n\n${prompt}`;
 
   const maxTweetSize = 280;
   const tokenSize = 4;
