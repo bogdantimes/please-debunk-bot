@@ -300,10 +300,10 @@ global.debunkRecentTweets = function () {
   const checkedTweetIds = getCheckedTweetIdsFromCache();
   const tweets = result.data?.filter(
     (t) =>
+      // Not a mention/reply tweet
+      !t.text.startsWith("@") &&
       // Only tweets that >= 50 symbols excluding mentions
       t.text.replace(/@\w+/g, ``).length >= 50 &&
-      // Reply only non-replied tweets
-      t.public_metrics.reply_count === 0 &&
       //  That have enough impressions
       (impressions < 0 || t.public_metrics.impression_count >= impressions) &&
       // That have not been checked before
