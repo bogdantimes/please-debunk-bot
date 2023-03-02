@@ -45,7 +45,7 @@ function debunkWithGPT(tweet: string, prompt: string): string {
       payload: JSON.stringify({
         model: `gpt-3.5-turbo`,
         max_tokens: maxTweetSize / tokenSize,
-        messages: [{ role: "user", content: neuralNetPrompt }],
+        messages: [{ role: `user`, content: neuralNetPrompt }],
       }),
     }
   );
