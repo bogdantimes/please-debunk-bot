@@ -16,7 +16,7 @@ const {
 const silentMode = !!+SILENT_MODE;
 
 function mapChoice(choice): string {
-  const result = choice?.text?.trim() || ``;
+  const result = choice?.message.content.trim() || ``;
 
   if (result.startsWith(`0`)) return ``;
 
@@ -33,19 +33,22 @@ function debunkWithGPT(tweet: string, prompt: string): string {
 
   const maxTweetSize = 280;
   const tokenSize = 4;
-  const response = UrlFetchApp.fetch(`https://api.openai.com/v1/completions`, {
-    method: `post`,
-    contentType: `application/json`,
-    headers: {
-      Authorization: `Bearer ${GPT_KEY}`,
-    },
-    muteHttpExceptions: true,
-    payload: JSON.stringify({
-      model: `text-davinci-003`,
-      max_tokens: maxTweetSize / tokenSize,
-      prompt: neuralNetPrompt,
-    }),
-  });
+  const response = UrlFetchApp.fetch(
+    `https://api.openai.com/v1/chat/completions`,
+    {
+      method: `post`,
+      contentType: `application/json`,
+      headers: {
+        Authorization: `Bearer ${GPT_KEY}`,
+      },
+      muteHttpExceptions: true,
+      payload: JSON.stringify({
+        model: `gpt-3.5-turbo`,
+        max_tokens: maxTweetSize / tokenSize,
+        messages: [{ role: "user", content: neuralNetPrompt }],
+      }),
+    }
+  );
 
   if (response.getResponseCode() >= 300) {
     throw new Error(
@@ -301,7 +304,7 @@ global.debunkRecentTweets = function () {
   const tweets = result.data?.filter(
     (t) =>
       // Not a mention/reply tweet
-      !t.text.startsWith("@") &&
+      !t.text.startsWith(`@`) &&
       // Only tweets that >= 50 symbols excluding mentions
       t.text.replace(/@\w+/g, ``).length >= 50 &&
       //  That have enough impressions
