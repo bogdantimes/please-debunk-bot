@@ -97,6 +97,25 @@ global.tick = function () {
   console.log(`mentions`, mentions);
   console.log(`included tweets`, mentions.includes?.tweets);
 
+  const handleTweet = function (m, refTweet, i = 0): void {
+    if (i > 4) return;
+    try {
+      // Use mention text if no ref tweet
+      // Remove mentions from tweet
+      const text = (refTweet?.text || m.text).replace(/@\w+/g, ``);
+      const result = debunkWithGPT(text, REPLY_PROMPT);
+      if (!silentMode) {
+        reply(result || `I can't tell with confidence. #DYOR 🫡`, m.id);
+      }
+    } catch (e) {
+      if (e.message.includes(`Tweet text is too long`)) {
+        handleTweet(m, refTweet, i + 1);
+      } else {
+        console.error(e);
+      }
+    }
+  };
+
   mentions?.data?.forEach((m: any) => {
     console.log(`mention`, m);
 
@@ -105,13 +124,7 @@ global.tick = function () {
     const notOwnReply = refTweet?.author_id !== BOT_ID;
     if (isNewConversation && notOwnReply) {
       console.log(`ref tweet`, refTweet);
-      // Use mention text if no ref tweet
-      // Remove mentions from tweet
-      const text = (refTweet?.text || m.text).replace(/@\w+/g, ``);
-      const result = debunkWithGPT(text, REPLY_PROMPT);
-      if (!silentMode) {
-        reply(result || `I can't tell with confidence. #DYOR 🫡`, m.id);
-      }
+      handleTweet(m, refTweet);
     }
 
     if (!silentMode) {
@@ -312,22 +325,28 @@ global.debunkRecentTweets = function () {
       // That have not been checked before
       !checkedTweetIds.includes(t.id)
   );
-  if (tweets?.length) {
-    tweets.reverse().forEach((tweet: any) => {
-      console.log(tweet);
-      try {
-        Utilities.sleep(1000); // cool down
-        // Remove mentions from tweet
-        const text = tweet.text.replace(/@\w+/g, ``);
-        const debunkText = debunkWithGPT(text, PROMPT);
-        if (!silentMode && debunkText) {
-          Utilities.sleep(4000); // cool down
-          retweetWithComment(debunkText, tweet.id);
-        }
-        checkedTweetIds.push(tweet.id);
-      } catch (e) {
+  const handleTweet = function (tweet, i = 0): void {
+    if (i > 4) return;
+    try {
+      Utilities.sleep(1000); // cool down
+      const debunkText = debunkWithGPT(tweet.text, PROMPT);
+      if (!silentMode && debunkText) {
+        Utilities.sleep(4000); // cool down
+        retweetWithComment(debunkText, tweet.id);
+      }
+      checkedTweetIds.push(tweet.id);
+    } catch (e) {
+      if (e.message.includes(`Tweet text is too long`)) {
+        handleTweet(tweet, i + 1);
+      } else {
         console.error(e);
       }
+    }
+  };
+  if (tweets?.length) {
+    tweets.reverse().forEach((t) => {
+      console.log(t);
+      handleTweet(t);
     });
   }
 
