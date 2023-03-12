@@ -31,8 +31,6 @@ function mapChoice(choice): string {
 function debunkWithGPT(tweet: string, prompt: string): string {
   const neuralNetPrompt = `Tweet:\n"${tweet}".\n\n${prompt}`;
 
-  const maxTweetSize = 280;
-  const tokenSize = 4;
   const response = UrlFetchApp.fetch(
     `https://api.openai.com/v1/chat/completions`,
     {
@@ -44,7 +42,6 @@ function debunkWithGPT(tweet: string, prompt: string): string {
       muteHttpExceptions: true,
       payload: JSON.stringify({
         model: `gpt-3.5-turbo`,
-        max_tokens: maxTweetSize / tokenSize,
         messages: [{ role: `user`, content: neuralNetPrompt }],
       }),
     }
