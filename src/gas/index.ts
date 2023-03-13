@@ -1,9 +1,13 @@
+import HTTPResponse = GoogleAppsScript.URL_Fetch.HTTPResponse;
+
 export const MAX_EXPIRATION = 60 * 60 * 6;
 const {
   BOT_ID,
   CLIENT_ID,
   CLIENT_SECRET,
   GPT_KEY,
+  GOOGLE_SEARCH_KEY,
+  GOOGLE_SEARCH_CX,
   code_verifier: CODE_VERIFIER,
   PROMPT,
   REPLY_PROMPT,
@@ -28,9 +32,30 @@ function mapChoice(choice): string {
   return trimResult.length < 10 ? `` : trimResult;
 }
 
-function debunkWithGPT(tweet: string, prompt: string): string {
-  const neuralNetPrompt = `Tweet:\n"${tweet}".\n\n${prompt}`;
+function debunkWithGPT(tweet: string, prompt: string, searchResults?): string {
+  const time = new Date().toLocaleString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 
+  const systemPrompt = {
+    role: "system",
+    content: `Today is ${time}. You are @PleaseDebunk twitter bot.`,
+  };
+  let userPrompt = `Tweet:\n"${tweet}".`;
+  if (searchResults) {
+    userPrompt += `\n\n${prompt} Use the following automatic search results as additional context for a reply:
+\`\`\`json
+${JSON.stringify(searchResults)}
+\`\`\`.`;
+  } else {
+    userPrompt += `\n\nSuggest me a search query I can use to google additional information related to the tweet. Just reply "QSTART search query keywords here QEND"`;
+  }
+
+  const messages = [systemPrompt, { role: `user`, content: userPrompt }];
+  console.log("Prompt", messages);
   const response = UrlFetchApp.fetch(
     `https://api.openai.com/v1/chat/completions`,
     {
@@ -42,7 +67,7 @@ function debunkWithGPT(tweet: string, prompt: string): string {
       muteHttpExceptions: true,
       payload: JSON.stringify({
         model: `gpt-3.5-turbo`,
-        messages: [{ role: `user`, content: neuralNetPrompt }],
+        messages,
       }),
     }
   );
@@ -51,6 +76,23 @@ function debunkWithGPT(tweet: string, prompt: string): string {
     throw new Error(
       `ChatGPT failed ${response.getResponseCode()}: ${response.getContentText()}`
     );
+  }
+
+  if (!searchResults) {
+    // google-it integration
+    const regExp = /QSTART([^₴]*)QEND/;
+    const query = response.getContentText().match(regExp)?.[1]?.trim();
+
+    if (query) {
+      console.log("Search:", query);
+      try {
+        const searchResults = searchGoogle({ query, limit: 3 });
+        console.log("Search results:", searchResults);
+        return debunkWithGPT(tweet, prompt, searchResults);
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }
 
   const gptReply = JSON.parse(response.getContentText());
@@ -349,3 +391,20 @@ global.debunkRecentTweets = function () {
 
   saveCheckedTweetIdsToCache(checkedTweetIds);
 };
+
+function searchGoogle({
+  query = "",
+  limit = 10,
+}: {
+  query: string;
+  limit: number;
+}): { snippet: string; link: string; title: string }[] {
+  const URL = `https://www.googleapis.com/customsearch/v1`;
+  const _query = encodeURIComponent(query);
+  const url: string = `${URL}?key=${GOOGLE_SEARCH_KEY}&cx=${GOOGLE_SEARCH_CX}&q=${_query}&num=${limit}`;
+  const response: HTTPResponse = UrlFetchApp.fetch(url);
+  const json: any = JSON.parse(response.getContentText());
+  return json.items.map(({ title, link, snippet }) => {
+    return { title, link, snippet };
+  });
+}
