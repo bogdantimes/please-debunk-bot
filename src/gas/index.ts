@@ -51,7 +51,7 @@ function debunkWithGPT(tweet: string, prompt: string, searchResults?): string {
 ${JSON.stringify(searchResults)}
 \`\`\`.`;
   } else {
-    userPrompt += `\n\nSuggest me a search query I can use to google additional information related to the tweet. Just reply "QSTART search query keywords here QEND"`;
+    userPrompt += `\n\nSuggest me a search query I can use to google additional information related to the tweet. Just reply in this format: \`QSTART search query keywords here QEND\``;
   }
 
   const messages = [systemPrompt, { role: `user`, content: userPrompt }];
@@ -91,6 +91,7 @@ ${JSON.stringify(searchResults)}
         return debunkWithGPT(tweet, prompt, searchResults);
       } catch (e) {
         console.error(e);
+        return debunkWithGPT(tweet, prompt, []);
       }
     }
   }
