@@ -33,15 +33,15 @@ function mapChoice(choice): string {
 }
 
 function debunkWithGPT(tweet: string, prompt: string, searchResults?): string {
-  const time = new Date().toLocaleString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
+  const time = new Date().toLocaleString(`en-US`, {
+    weekday: `long`,
+    month: `long`,
+    day: `numeric`,
+    year: `numeric`,
   });
 
   const systemPrompt = {
-    role: "system",
+    role: `system`,
     content: `Today is ${time}. You are @PleaseDebunk twitter bot.`,
   };
   let userPrompt = `Tweet:\n"${tweet}".`;
@@ -55,7 +55,7 @@ ${JSON.stringify(searchResults)}
   }
 
   const messages = [systemPrompt, { role: `user`, content: userPrompt }];
-  console.log("Prompt", messages);
+  console.log(`Prompt`, messages);
   const response = UrlFetchApp.fetch(
     `https://api.openai.com/v1/chat/completions`,
     {
@@ -84,10 +84,10 @@ ${JSON.stringify(searchResults)}
     const query = response.getContentText().match(regExp)?.[1]?.trim();
 
     if (query) {
-      console.log("Search:", query);
+      console.log(`Search:`, query);
       try {
         const searchResults = searchGoogle({ query, limit: 3 });
-        console.log("Search results:", searchResults);
+        console.log(`Search results:`, searchResults);
         return debunkWithGPT(tweet, prompt, searchResults);
       } catch (e) {
         console.error(e);
@@ -393,12 +393,12 @@ global.debunkRecentTweets = function () {
 };
 
 function searchGoogle({
-  query = "",
+  query = ``,
   limit = 10,
 }: {
   query: string;
   limit: number;
-}): { snippet: string; link: string; title: string }[] {
+}): Array<{ snippet: string; link: string; title: string }> {
   const URL = `https://www.googleapis.com/customsearch/v1`;
   const _query = encodeURIComponent(query);
   const url: string = `${URL}?key=${GOOGLE_SEARCH_KEY}&cx=${GOOGLE_SEARCH_CX}&q=${_query}&num=${limit}`;
